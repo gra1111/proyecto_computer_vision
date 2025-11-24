@@ -98,3 +98,9 @@ print("Root mean squared reprojection error:\n", rms)
 print("\nExtrinsics :")
 for i, ext in enumerate(extrinsics):
     print(f"Vista {i:02d}:\n{ext}\n")
+
+# save parameters
+
+output_calib = "../data/camera_calibration_params.npz"
+np.savez(output_calib, intrinsics=intrinsics, dist_coeffs=dist_coeffs)
+print(f"Parámetros de calibración guardados en: {output_calib}")
