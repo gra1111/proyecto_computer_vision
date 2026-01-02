@@ -6,17 +6,18 @@ import numpy as np
 
 def classify_shape(contour):
     """Clasifica un contorno en 'SQUARE', 'CIRCLE', 'TRIANGLE', 'STAR' o None."""
-    peri = cv2.arcLength(contour, True)
-    if peri == 0:
+    perimeter = cv2.arcLength(contour, True)
+    if perimeter == 0:
         return None
 
-    approx = cv2.approxPolyDP(contour, 0.02 * peri, True)
+    approx = cv2.approxPolyDP(contour, 0.02 * perimeter, True)
     vertices = len(approx)
     area = cv2.contourArea(contour)
     if area == 0:
         return None
-
-    circularity = 4 * np.pi * area / (peri * peri)
+    # circularity formula: 4π * Area / Perimeter**2 -> if its close to 1 it indicates a similar to a circle shape
+    # used to diferenciate star and circle
+    circularity = 4 * np.pi * area / (perimeter * perimeter)
 
     if vertices == 3:
         return "TRIANGLE"
@@ -53,8 +54,8 @@ def detect_colored_shapes(roi, display, offset_x, offset_y):
         {
             "shape_id": "CIRCLE",
             "label": "Circulo rojo",
-            "lower": np.array([165, 70, 60]),
-            "upper": np.array([179, 255, 255]),
+            "lower": np.array([155, 70, 60]),
+            "upper": np.array([190, 255, 255]),
             "bgr":   (0, 0, 255),
         },
         {
