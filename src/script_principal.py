@@ -1,11 +1,10 @@
 import cv2
 import numpy as np
-
-# ---------- Clasificación geométrica ----------
+import time
 
 
 def classify_shape(contour):
-    """Clasifica un contorno en 'SQUARE', 'CIRCLE', 'TRIANGLE', 'STAR' o None."""
+    """Clasifica un contorno en 'SQUARE', 'CIRCLE', 'TRIANGLE', 'STAR' o None"""
     perimeter = cv2.arcLength(contour, True)
     if perimeter == 0:
         return None
@@ -15,8 +14,8 @@ def classify_shape(contour):
     area = cv2.contourArea(contour)
     if area == 0:
         return None
-    # circularity formula: 4π * Area / Perimeter**2 -> if its close to 1 it indicates a similar to a circle shape
-    # used to diferenciate star and circle
+    # circularity formula: 4π * Area / Perimeter**2 ->si es cercano a 1 la figura tiene forma circular
+    # usado para diferenciar la estrella y el circulo
     circularity = 4 * np.pi * area / (perimeter * perimeter)
 
     if vertices == 3:
@@ -36,20 +35,14 @@ def classify_shape(contour):
 
 def detect_colored_shapes(roi, display, offset_x, offset_y):
     """
-    Dentro de la ROI detecta figuras que cumplan color + forma:
-      - CIRCLE rojo
-      - TRIANGLE negro
-      - SQUARE verde
-      - STAR magenta
-    Devuelve un conjunto con los identificadores de forma detectados.
-    Puede devolver set() si no detecta nada.
+    detecta figuras que cumplan color + forma
+    - CIRCLE rojo
+    - TRIANGLE negro
+    - SQUARE verde
+    - STAR magenta
     """
     hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
 
-    # (177,255,168) rojo círculo
-    # (81,181,156)  verde cuadrado
-    # (0,0,0)  negro triángulo
-    # (138,204,144) magenta estrella
     color_defs = [
         {
             "shape_id": "CIRCLE",
@@ -86,8 +79,12 @@ def detect_colored_shapes(roi, display, offset_x, offset_y):
 
     for cd in color_defs:
         mask = cv2.inRange(hsv, cd["lower"], cd["upper"])
+        # morphologyEx aplica apertura morfologica (erosion y luego dilatacion),
+        # para quitarnos pequeños puntos blancos por iluminacion o textura
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
+        # buscamos contorno para este color y nos quedamos el mas grande
+        # (se asume que la figura es el contorno mas grande del color)
         contours, _ = cv2.findContours(
             mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
         )
@@ -99,12 +96,14 @@ def detect_colored_shapes(roi, display, offset_x, offset_y):
         if area < 500:
             continue
 
+        # vemos si cuadra el shape que buscabamos para dicho color y si es asi nos lo quedamos
         shape = classify_shape(c)
         if shape != cd["shape_id"]:
             continue
 
         detected_shapes.add(cd["shape_id"])
 
+        # display para qeu se vea que se esta detectando
         x, y, w_box, h_box = cv2.boundingRect(c)
         cv2.rectangle(roi, (x, y), (x + w_box, y + h_box), cd["bgr"], 2)
         cv2.rectangle(display,
@@ -120,12 +119,12 @@ def detect_colored_shapes(roi, display, offset_x, offset_y):
 
 def detectar_pelota_rosa(frame):
     """
-    Detecta la pelota rosa por color.
-    Devuelve una bbox (x, y, w, h) o None si no la encuentra.
+    Detecta la pelota rosa usando unicamente el color
+    Devuelve una bbox (x, y, w, h) o None si no la encuentar
     """
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-    # Rango aproximado para rosa ajusatado con el color de nuestra pelota
+    # rango aproximado para rosa ajusatado con el color de nuestra pelota
     lower_pink = np.array([140, 70, 70])
     upper_pink = np.array([179, 255, 255])
 
@@ -168,7 +167,7 @@ def main(camera_index=0, width=1280, height=720):
     window_name = "Live Camera - press 'q' to quit"
     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
 
-    # -------- FASE 1: CONTRASEÑA --------
+    # fase 1 : contraseña
     state_order = ["CIRCLE", "TRIANGLE", "SQUARE", "STAR"]
     state_index = 0
     previous_detected = "STAR"
@@ -187,10 +186,12 @@ def main(camera_index=0, width=1280, height=720):
 
         h, w = display.shape[:2]
 
-        # ROI en esquina superior izquierda
+        # ROI en esquina arriba izquierda
+        # hacemos que el ROI depende del tamaño del frame y no sea uno fijo
         roi_size = int(min(w, h) * 0.4)
         x1 = 20
         y1 = 20
+        # para que no se salga de la imagen:
         roi_size = min(roi_size, w - x1, h - y1)
         x2 = x1 + roi_size
         y2 = y1 + roi_size
@@ -203,10 +204,10 @@ def main(camera_index=0, width=1280, height=720):
 
         roi = frame[y1:y2, x1:x2]
 
-        # Detectar formas color+forma en la ROI
+        # detectar formas color+forma en la ROI
         detected = detect_colored_shapes(roi, display, x1, y1)
 
-        # Máquina de estados sencilla para la contraseña
+        # maquina de estados para la contraseña
         expected_shape = state_order[state_index]
         if detected and previous_detected != detected:
             if expected_shape in detected:
@@ -222,16 +223,16 @@ def main(camera_index=0, width=1280, height=720):
 
         cv2.imshow(window_name, display)
         key = cv2.waitKey(1) & 0xFF
+        # si se presiona la q o ESC salimos del programa
+        # 27 equivale al ESC
         if key == ord('q') or key == 27:
             cap.release()
             cv2.destroyAllWindows()
             return
 
-    tracker = None          # tracker de la pelota
     basket_rect = None    # zona de la papelera (x, y, w, h)
     intial_shooting_rect = None
     made_shots = 0
-    was_inside = False
 
     # fase dos, pelota cnasata y kalman
     # Create the Kalman filter object
@@ -261,14 +262,27 @@ def main(camera_index=0, width=1280, height=720):
     total_shots = 0
     missed_shots = 0
     made_shots = 0
-    inside_frames_time = 15   # nº de frames seguidos dentro para que sea canasta
+    # nº de frames seguidos dentro para que sea canasta (15 decidido en pruebas en el lab)
+    inside_frames_time = 15
     inside_counter = 0
     inside_tiro_prev = False
 
+    # para caluclar los fps
+    prev_time = time.time()
+    fps = 0
+
     while True:
+        # calculo de fps
+        current_time = time.time()
+        dt = current_time - prev_time
+        prev_time = current_time
+
+        if dt > 0:
+            fps = 1.0 / dt
+
         ret, frame = cap.read()
         if not ret:
-            print("No frame received (the camera may have been disconnected).")
+            print("No frame received (the camera may have been disconnected)")
             break
 
         frame = cv2.flip(frame, 1)
@@ -285,7 +299,7 @@ def main(camera_index=0, width=1280, height=720):
             2
         )
 
-        # Mostrar papelera si ya esta definida y sino seleccionarla
+        # mostrar papelera si ya esta definida y sino seleccionarla
         if basket_rect is None:
             cv2.putText(
                 display,
@@ -323,8 +337,6 @@ def main(camera_index=0, width=1280, height=720):
                 2
             )
 
-        # -------- MEDIDA: detección por color (en lugar de meanShift del ejemplo) --------
-        # distinto: usamos color, no backprojection + meanShift
         bbox = detectar_pelota_rosa(frame)
 
         if bbox is not None:
@@ -348,17 +360,14 @@ def main(camera_index=0, width=1280, height=720):
             measurement = None  # distinto: si no hay detección, solo predicción
 
         if kalman_initialized:
-            # Predict the position of the object (igual que en el ejemplo)
             prediction = kf.predict()
             p_x = float(prediction[0][0])
             p_y = float(prediction[1][0])
 
-            # Update the measurement and correct the Kalman filter
             if measurement is not None:
-                # igual que en el ejemplo, pero con c_x, c_y correctos
                 kf.correct(measurement)
 
-            # Dibujar el cuadrado verde alrededor de la posición predicha
+            # dibujamos un cuadrado que siga la pelota
             if last_bbox is not None:
                 _, _, w_b, h_b = last_bbox
                 x_pred = int(p_x - w_b / 2.0)
@@ -369,13 +378,13 @@ def main(camera_index=0, width=1280, height=720):
                               (0, 255, 0), 2)
                 cv2.circle(display, (int(p_x), int(p_y)), 4, (0, 255, 0), -1)
 
-                # CAMBIO: lógica de tiro, canasta y fallo usando punto de tiro + papelera
+                # logica de canastas y fallos
                 inside_basket = basket_rect is not None and punto_en_rect(
                     p_x, p_y, basket_rect)
                 inside_tiro = intial_shooting_rect is not None and punto_en_rect(
                     p_x, p_y, intial_shooting_rect)
 
-                # 1) Si hay tiro en curso, comprobar canasta (pelota dentro de papelera un tiempo)
+                # 1) si hay tiro en curso comprobamos si hay una cansta
                 if shot_in_progress:
                     if inside_basket:
                         inside_counter += 1
@@ -386,7 +395,7 @@ def main(camera_index=0, width=1280, height=720):
                     else:
                         inside_counter = 0
 
-                # 2) Inicio de tiro: sale del punto de tiro
+                # 2) inicio de tiro (sale del punto de tiro)
                 if intial_shooting_rect is not None:
                     if inside_tiro_prev and not inside_tiro:
                         shot_in_progress = True
@@ -395,7 +404,7 @@ def main(camera_index=0, width=1280, height=720):
                         total_shots += 1
                         print("NUEVO TIRO. Intentos totales:", total_shots)
 
-                    # 3) Fin de tiro: vuelve al punto de tiro
+                    # 3) final del tiro (vuelve al punto de tiro)
                     if not inside_tiro_prev and inside_tiro and shot_in_progress:
                         if not scored_this_shot:
                             missed_shots += 1
@@ -409,7 +418,7 @@ def main(camera_index=0, width=1280, height=720):
                 inside_counter = 0
                 inside_tiro_prev = False
 
-        # CAMBIO: mostrar canastas, intentos y fallos
+        # mostramos fallos canastas e intentos
         cv2.putText(
             display,
             f"Canastas: {made_shots}",
@@ -428,6 +437,14 @@ def main(camera_index=0, width=1280, height=720):
             (255, 255, 255),
             2
         )
+        # dibujo de los fps
+        cv2.putText(display,
+                    f"FPS: {fps:.1f}",
+                    (20, 150),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.8,
+                    (255, 255, 255),
+                    2)
 
         cv2.imshow(window_name, display)
         key = cv2.waitKey(1) & 0xFF
@@ -435,7 +452,7 @@ def main(camera_index=0, width=1280, height=720):
         if key == ord('q') or key == 27:
             break
 
-        # Seleccionar papelera con 'b'
+        # seleccionar la papelera con 'b'
         if key == ord('b'):
             roi = cv2.selectROI(window_name, frame,
                                 showCrosshair=True, fromCenter=False)
@@ -445,11 +462,11 @@ def main(camera_index=0, width=1280, height=720):
                 basket_rect = roi
 
         if key == ord('r'):
-            # la r resetea el contador
+            # la r para resetear el contador
             total_shots = 0
             missed_shots = 0
             made_shots = 0
-        # AÑADIR: seleccionar punto de tiro con 't'
+        # seleccionar el punto de tiro con la 't'
         if key == ord('t'):
             roi = cv2.selectROI(window_name, frame,
                                 showCrosshair=True, fromCenter=False)
