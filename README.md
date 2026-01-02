@@ -6,45 +6,55 @@
   </picture>
 </a>
 
+**Welcome to the Final Lab Project of Computer *Vision I* at Comillas ICAI**.  
+This repository contains the complete implementation of a **classical computer vision system in real time**, developed as part of the final project of the course 📷💻.
 
-**Welcome to the Lab Project of Computer *Vision I* at Comillas ICAI**. Here, you will find all the necessary files to start your project 💻📷
+The project integrates **camera calibration**, **pattern-based visual security**, and a **tracking system using a Kalman filter**, without relying on Deep Learning techniques.
 
+---
 
-## Resources (WIP 🛠️)
+## 📁 Resources
 
-This laboratory session contains the following:
+This laboratory project contains the following elements:
 
-- 📄 **Guide**: A ``PDF`` guide with instructions to complete the session (currently only available in Spanish).
-- 💻 **Script**: a ``.ipynb`` or ``.py`` file to complete.
-- 🎞️ **Data**: A folder containing images to process.
-- 📝 **Template**: A folder with a ``latex`` template used to generate the guide. You can reuse it to write your report.
-- 🧩 **Assets**: Files to style or improve documentation.
-- 📖 **README**: With links to motivate the session or to introduce the theory concepts.
+- 📄 **Guide**: A `PDF` file with the official project description and requirements.
+- 💻 **Scripts**: Python scripts implementing the full system.
+- 🎞️ **Data**: Calibration images and stored calibration parameters.
+- 🖼️ **Assets**: Images used for documentation and repository styling.
+- 📝 **Template**: LaTeX template used to generate the project guide (can be reused for the report).
+- 📖 **README**: This file, describing the project structure and functionality.
 
-The folder lab session folder is structured as follows:
+---
+
+## 🗂️ Project structure
+
+The repository is organized as follows:
 
 ```bash
 .
-├── guide.pdf
-├── src
-│   ├── lab_session.ipynb
-│   ├── lab_session.py
-│   └── ...
-├── data
-│   ├── image1.png
-│   ├── image2.png
-│   └── ...
 ├── assets
+│   ├── lab-project-dark.png
+│   └── lab-project-light.png
+│
+├── data
+│   ├── calibration_00.jpg
+│   ├── calibration_01.jpg
+│   ├── ...
+│   ├── calibration_09.jpg
+│   └── camera_calibration_params.npz
+│
+├── imagenes_con_marca
+│   ├── calibration_00_marked.jpg
+│   ├── ...
+│   └── calibration_09_marked.jpg
+│
+├── src
+│   ├── camera_calibration.py
+│   ├── script_principal.py
+│   └── test.py
+│
 ├── template
-└── README
-```
-
-## Get ready 🤓 (WIP 🛠️)
-If you're not enrolled or don't have access to the theory, or just want a refresher, check out the resources below before starting the lab.
-
-
-<h2 align="center" style="margin-bottom: 0px;">Here we go: Lab Project!</h2>
-<p align="center">
-  <img src="https://i.giphy.com/media/3orif60PUpLFuG4Sru/giphy.gif" width="300" style="margin-bottom: 0px;" />
-</p>
-<h3 align="center" style="margin-top: 0px;"> Hint: Don't be like Homer</h3>
+│   └── (LaTeX template for the report)
+│
+├── Lab_Project.pdf
+└── README.md
